@@ -1,0 +1,132 @@
+#実行 execution_AI_lab_tuning
+class execution_AI_lab_tuning:
+    def __init__(self,X_train,X_test,X_valid,y_valid, y_train, y_test,AIpass_out):
+        #AI実施したいデータをここに入れる
+        self.X_train = X_train
+        self.X_test = X_test
+        self.y_train = y_train
+        self.y_test = y_test   
+        self.X_valid = X_valid
+        self.y_valid = y_valid
+        
+        #AI実行結果書き出したいフォルダデータを入れるところです！
+        self.AIpass_out = AIpass_out
+
+    def pass_AIo_t(self):
+        return AIself.pass_out
+    
+    def lightgbm_optuna_and_Manual_tuning(self):
+        import optuna
+        from sklearn.metrics import roc_auc_score
+                #light GBM関数 2値　分類用
+        from sklearn import metrics
+        #'numpy.ndarray' object has no attribute 'iloc' となってしまうので　pandasにした
+        X_train1 = pd.DataFrame(self.X_train)
+        X_test1 = pd.DataFrame(self.X_test)
+        y_train1 = pd.DataFrame(self.y_train)
+        y_test1 = pd.DataFrame(self.y_test)
+        
+        X_valid1 = pd.DataFrame(self.X_valid)
+        y_valid1 = pd.DataFrame(self.y_valid)
+
+        # データセットを生成する
+        lgb_train = lgb.Dataset(X_train1, y_train1)
+        lgb_eval = lgb.Dataset(X_valid1, y_valid1, reference=lgb_train)
+
+        def objective(trial):
+            param = {
+                'objective': 'cross_entropy',
+                'metric': 'auc',
+                'boosting': 'gbdt',
+                'learning_rate': 0.05,
+                'lambda_l1': trial.suggest_loguniform('lambda_l1', 1e-8, 10.0),
+                'lambda_l2': trial.suggest_loguniform('lambda_l2', 1e-8, 10.0),
+
+                'feature_fraction': trial.suggest_uniform('feature_fraction', 0.4, 1.0),
+                'min_data_in_leaf':1,
+                'bagging_fraction': trial.suggest_uniform('bagging_fraction', 0.4, 1.0),
+                'bagging_freq': trial.suggest_int('bagging_freq', 0, 10),
+                'min_child_samples': trial.suggest_int('min_child_samples', 5, 100),
+                'seed': 0,
+                'verbosity': -1,
+            }
+            gbm = lgb.train(param, lgb_train, valid_sets=lgb_eval,
+                            verbose_eval=False, num_boost_round=1000, early_stopping_rounds=10)
+            y_prob = gbm.predict(X_test1)
+            y_pred = np.round(y_prob)
+            return roc_auc_score(
+                np.round(y_test1.values),
+                np.round(y_pred)
+            )
+
+
+        study = optuna.create_study(direction='maximize')
+        study.optimize(objective, n_trials=10)
+
+        print('Number of finished trials:', len(study.trials))
+        print('Best trial:', study.best_trial.params)
+        print('roc_auc_score:',roc_auc_score)
+
+    #optunaに手動でチューニングしたパラメーターを入れて予測する関数
+    def lightgbm_optuna_and_Manual_tuning_ex(self):
+        import optuna.integration.lightgbm as lgb
+                # データセットを生成する
+        from sklearn import metrics
+        lgb_train = lgb.Dataset(self.X_train, self.y_train)
+        lgb_eval = lgb.Dataset(self.X_test, self.y_test, reference=lgb_train)
+                # LightGBM のハイパーパラメータ
+        lgbm_params = {
+                    # 二値分類問題
+                    'objective': 'binary',
+                    # AUC の最大化を目指す
+                    'metric': 'auc',
+                    # Fatal の場合出力
+                    'verbosity': -1,
+                     'lambda_l1':0.06135436444815073,
+                'lambda_l2': 0.001057000283431114,
+
+                'feature_fraction': 0.6721160346590178,
+                'min_data_in_leaf':0,
+                'bagging_fraction': 0.461349472877471,
+                'bagging_freq': 2,
+                'min_child_samples': 6,
+                }
+                # 上記のパラメータでモデルを学習する
+        model = lgb.train(lgbm_params, lgb_train, valid_sets=lgb_eval,
+                                  verbose_eval=50,  # 50イテレーション毎に学習結果出力
+                                  num_boost_round=1000,  # 最大イテレーション回数指定
+                                  early_stopping_rounds=100,
+                                 )
+                # 保存
+        model.save_model('model.txt')
+                # テストデータを予測する
+        y_pred = model.predict(X_test, num_iteration=model.best_iteration)
+                # 保存したモデルを使う場合はこんな感じ
+                #bst = lgb.Booster(model_file='model.txt')
+                #ypred = bst.predict(X_test, num_iteration=bst.best_iteration)
+                # AUC (Area Under the Curve) を計算する
+        fpr, tpr, thresholds = metrics.roc_curve(y_test, y_pred)
+        auc = metrics.auc(fpr, tpr)
+        print("auc",auc)
+        print("fpr False Positive Rate：偽陽性率",fpr)
+        print("tpr True Positive Rate：真陽性率",tpr)
+        print("thresholds",thresholds)
+        # ROC曲線をプロット
+        plt.plot(fpr, tpr, label='ROC curve (area = %.2f)'%auc)
+        plt.legend()
+        plt.title('ROC curve')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.grid(True)
+        
+        df_Actual_predicted_values = pd.DataFrame({'y_true':y_test, 'y_pred':y_pred})
+        print(df_Actual_predicted_values)
+        
+X_train,X_test,X_valid,y_valid, y_train, y_test = e.advance_preparation()
+#AIdataは今回top10の特徴量で評価 インスタンス自身 を書き換える
+e_all = execution_AI_lab_tuning(X_train,X_test,X_valid,y_valid, y_train, y_test,u.pass_o()+"top10_0.8_test_lighatGBM_act_output/")
+#optunaでパラメータ調整しきれない部分を手動でチューニングする関数
+#データ数が足りないのかうまくいかなかった↓
+#e_all.lightgbm_optuna_and_Manual_tuning()
+#optunaに手動でチューニングしたパラメーターを入れて予測する関数
+e_all.lightgbm_optuna_and_Manual_tuning_ex()
