@@ -71,17 +71,80 @@ from sklearn.metrics import r2_score
 from sklearn.metrics import accuracy_score
 #-----------------------------------------------
 #クラスをインポート　Importing classes
+import make_self_data_and_pass_1 as make_self_data
+
+#ここでselfの値を定義する
+u = my_di("./20201218_output/data_day_1.csv","./20201218_output/")
+#データを書き込むpass_o
+pass_o_name=u.pass_o()
+#データを読み込む
+df_r=u.imp_da()
+#dt_aというテストデータのもとと　特徴量のもとを日付で結合する両方の日付を残す
+df_a=u.make_da()
+#全ての特徴量を利用する際に以下のdfで利用すればよい
+df=df_a
+print(df)
+#-----------------------------------------------
+def pick_up_data_2(df_a,df_all_reg,num1,num2,num3):
+        endoscopy_3=df_a
+        name_all=df_all_reg['Name'].values
+        top10_endo=df_all_reg
+        print("top10_endo",top10_endo)
+        top10_endo.to_csv(r""+u.pass_o()+'top10_endo.csv', encoding = 'shift-jis')
+        name_all=top10_endo['Name'].values
+        top1=name_all[-num1]
+        print("top1",top1)
+        top1_v= endoscopy_3[top1].values
+        top2=name_all[-num2]
+        top2_v= endoscopy_3[top2].values
+        top3=name_all[-num3]
+        top3_v= endoscopy_3[top3].values
+        target= endoscopy_3['endoscopy'].values
+        #print(top1_v)
+        top10_endoscope=pd.DataFrame({'endoscopy':target,
+        str(top1):top1_v,
+        str(top2):top2_v,
+        str(top3):top3_v})
+        df_all=top10_endoscope
+        return df_all
+#特徴量の回帰係数順にpandas にしたものを取り出す関数この3つが重要　次にlightGBMへ入れる
+df_all_reg=u.make_top_all_pandas_not_onehot()
+all=pick_up_data_2(df_a,df_all_reg,1,2,3)
+all
+#-----------------------------------------------
+
+import make_self_light_GBM_bi as light_GBM_bi
+
+#AIdataは今回機械学習のlight GBMに入れたのですべての特徴量で評価
+bt = execution_AI_lab(all,u.pass_o()+"lighatGBM_bee_act_output/",0.8,0.3)
+#新しくフォルダ作る
+bt.pass_out_new()
+#データを読み込む
+X_train,X_test,X_valid,y_valid, y_train, y_test = bt.advance_preparation()
+#そのままlightgbm という機械学習モデルで2値分類実行する関数
+bt.lightgbm_binary_classification()
+#optunaでパラメータ調整してからlightgbm という機械学習モデルで2値分類実行する関数
+auc=bt.lightgbm_binary_classification_optuna()
 
 
+#-----------------------------------------------
+#2021 01 22人工蜂コロニーに入れるための関数作成
+def getNearestValue(list, num):
+    """
+    概要: リストからある値に最も近い値を返却する関数
+    @param list: データ配列
+    @param num: 対象値
+    @return 対象値に最も近い値
+    """
 
+    # リスト要素と対象値の差分を計算し最小値のインデックスを取得
+    idx = np.abs(np.asarray(list) - num).argmin()
+    return list[idx]
 
-
-
-
-
-
-
-
+ll=[]
+for i in range(100):
+    ll.append(i)
+ll
 
 #-----------------------------------------------
 #bee のfunc関数に入れるための関数 3次元bee_特徴量3の時用
@@ -112,7 +175,7 @@ def bee_func_feature_value_auc_3(xin):
     return out_put
 
 #-----------------------------------------------
-# import numpy as np
+# ABCの実行
 import matplotlib.pyplot as plt
 import math
 from matplotlib import animation
