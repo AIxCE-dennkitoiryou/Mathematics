@@ -1,0 +1,237 @@
+#実行 execution_AI
+class execution_AI_lab:
+    def __init__(self,AIdata,AIpass_out,Percentage_d,Percentage_d2):
+        #AI実施したいデータをここに入れる
+        self.AIdata = AIdata
+        #AI実行結果書き出したいフォルダデータを入れるところです！
+        self.AIpass_out = AIpass_out
+        #AI訓練データ testデータの割合を書き出したいデータを入れるところです！
+        self.Percentage_d = Percentage_d
+        #AI 訓練データ 検証データの割合を書き出したいフォルダデータを入れるところです！
+        self.Percentage_d2 = Percentage_d2
+    def pass_AIo(self):
+        return AIself.pass_out
+    def pass_out_new(self):
+        # フォルダ「output」が存在しない場合は作成する
+        data_dir = self.AIpass_out
+        if not os.path.exists(data_dir):
+            os.mkdir(data_dir)
+        print(self.AIpass_out+"フォルダ作成しました！！")
+    #事前準備
+    def advance_preparation(self):
+        #説明変数入力用ここをうまく少ないソースコードで取得できる方法を考案
+        def Create_Description_X(dt):
+         train_data = dt.values
+         X = train_data[:, 1:] # 2列目以降の変数
+         y  = train_data[:, 0]  # 正解データを1列目に置きましたそしてyとしました
+         #説明変数作成
+         print("X.shape",X.shape)
+         return X
+        #説明変数Create_Description_X実施これでXに値が入るはず
+        X = Create_Description_X(self.AIdata)
+        print("Create_Description_X 後の X.shape",X.shape)
+        #目的変数入力用関数
+        def Objective_variable_creationY(Ymoto):
+         targek = Ymoto
+         Y=targek.T
+         return Y
+        #目的変数作成
+        targetk = self.AIdata['endoscopy'].values
+        #目的変数作成関数利用
+        Y = Objective_variable_creationY(targetk)
+        print("Objective_variable_creationY 後の Y.shape",Y.shape)
+
+        # 訓練用のデータと、テスト用のデータに分ける関数
+        def Test_data_and_training_data_split(df,X,Y):
+         N_train = int(len(df) * self.Percentage_d)
+         N_test = len(df) - N_train
+         X_train, X_test, y_train, y_test = \
+            train_test_split(X, Y, test_size=N_test,shuffle=False)
+         return X_train, X_test, y_train, y_test
+
+        # 訓練用のデータと、テスト用のデータに分ける関数実行
+        X_train1, X_test, y_train1, y_test = Test_data_and_training_data_split(df,X,Y)
+        
+        #trainデータをさらに分ける X_train,X_valid,y_train,y_valid 
+        def Test_data_and_training_data_split_valid(df,X,Y):
+         #N_train = int(len(df) * self.Percentage_d2)
+         #N_test = len(df) - N_train
+         X_train, X_valid, y_train, y_valid = \
+            train_test_split(X, Y, test_size=self.Percentage_d2,shuffle=False)
+         return X_train, X_valid, y_train, y_valid
+        X_train, X_valid, y_train, y_valid = Test_data_and_training_data_split_valid(X_train1,X_train1,y_train1)
+        
+        print("X_train",X_train.shape)
+        print("Y_train",y_train.shape)
+        print("X_valid",X_valid.shape)
+        print("y_valid",y_valid.shape)
+        print("X_test",X_test.shape)
+        print("Y_test",y_test.shape)
+        return X_train,X_test,X_valid,y_valid, y_train, y_test
+        #ubuntuの場合以下を調整する必要がある
+
+    #lightgbm という機械学習モデルで2値分類実行する関数
+    def lightgbm_binary_classification(self):
+        import lightgbm as lgb   
+        #light GBM関数 2値　分類用
+        from sklearn import metrics
+
+        # データセットを生成する
+        lgb_train = lgb.Dataset(X_train, y_train)
+        lgb_eval = lgb.Dataset(X_valid, y_valid, reference=lgb_train)
+
+        # LightGBM のハイパーパラメータ
+        lgbm_params = {
+            # 二値分類問題
+            'objective': 'binary',
+            # AUC の最大化を目指す
+            'metric': 'auc',
+            # Fatal の場合出力
+            'verbosity': -1,
+        }
+
+        # 上記のパラメータでモデルを学習する
+        model = lgb.train(lgbm_params, lgb_train, valid_sets=lgb_eval,
+                          verbose_eval=50,  # 50イテレーション毎に学習結果出力
+                          num_boost_round=1000,  # 最大イテレーション回数指定
+                          early_stopping_rounds=200
+                         )
+
+        # 保存
+        model.save_model('model.txt')
+
+        # テストデータを予測する
+        y_pred = model.predict(X_test, num_iteration=model.best_iteration)
+        
+        # AUC (Area Under the Curve) を計算する
+        fpr, tpr, thresholds = metrics.roc_curve(y_test, y_pred)
+        auc = metrics.auc(fpr, tpr)
+        print("auc",auc)
+        # ROC曲線をプロット
+        plt.plot(fpr, tpr, label='ROC curve (area = %.2f)'%auc)
+        plt.legend()
+        plt.title('ROC curve')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.grid(True)
+        #いったん図を消去
+        plt.clf()
+        
+    #optunaでパラメータ調整してからlightgbm という機械学習モデルで2値分類実行する関数
+    def lightgbm_binary_classification_optuna(self):
+        import optuna.integration.lightgbm as lgb
+        # データセットを生成する
+        from sklearn import metrics
+        plt.clf()
+        testname='lightgbm_optuna_binary'
+        
+        lgb_train = lgb.Dataset(X_train, y_train)
+        lgb_eval = lgb.Dataset(X_valid, y_valid, reference=lgb_train)
+        # LightGBM のハイパーパラメータ
+        lgbm_params = {
+            # 二値分類問題
+            'objective': 'binary',
+            # AUC の最大化を目指す
+            'metric': 'auc',
+            # Fatal の場合出力
+            'verbosity': -1,
+            'min_data_in_leaf':0,
+        }
+        # 上記のパラメータでモデルを学習する
+        model = lgb.train(lgbm_params, lgb_train, valid_sets=lgb_eval,
+                          verbose_eval=50,  # 50イテレーション毎に学習結果出力
+                          num_boost_round=100,  # 最大イテレーション回数指定
+                          early_stopping_rounds=10,
+                         )
+        # 保存
+        model.save_model('model.txt')
+        # テストデータを予測する
+        y_pred = model.predict(X_test, num_iteration=model.best_iteration)
+        
+        #特徴量の重要度を表示
+        #lgb.plot_importance(model, height=0.5, figsize=(8,16))
+        #lgb.plot_importance.savefig(self.AIpass_out+"lgb.plot_importance"+"img.jpg")
+                #いったん図を消去
+        plt.clf()
+        #lgb.plot_split_value_histogram(model, height=0.5, figsize=(8,16))
+        
+        # 保存したモデルを使う場合はこんな感じ
+        #bst = lgb.Booster(model_file='model.txt')
+        #ypred = bst.predict(X_test, num_iteration=bst.best_iteration)
+        # AUC (Area Under the Curve) を計算する
+        fpr, tpr, thresholds = metrics.roc_curve(y_test, y_pred)
+        auc = metrics.auc(fpr, tpr)
+        print("auc Accuracy:正解率",auc)
+        print("fpr False Positive Rate：偽陽性率",fpr)
+        print("tpr True Positive Rate：真陽性率",tpr)
+        print("thresholds:閾値",thresholds)
+        # ROC曲線をプロット
+        plt.plot(fpr, tpr, label='ROC curve (area = %0.3f)'%auc)
+        plt.legend()
+        plt.title(str(testname)+'ROC curve')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.grid(True)
+        # ファイルに保存
+        plt.savefig(self.AIpass_out+"ROC curve"+"img.jpg")
+        plt.show()
+        #testname='lightgbm_optuna_binary'
+        df_Actual_predicted_values = pd.DataFrame({'y_true':y_test, 'y_pred':y_pred})
+        #print(df_Actual_predicted_values)
+        df_AI_Analysis_results = pd.DataFrame({"testname":testname,'AImodel':model,'Accuracy:正解率':auc, 'False Positive Rate：偽陽性率':fpr,
+                                               'True Positive Rate：真陽性率':tpr, 'thresholds:閾値':thresholds,
+                                              })
+        df_AI_A = pd.concat([df_AI_Analysis_results,df_Actual_predicted_values], axis=1)
+        print("df_AI_A",df_AI_A)
+        df_AI_A.to_csv(r""+self.AIpass_out+"Analysis_results.csv", encoding = 'shift-jis')
+        return auc
+        
+    #ABCアルゴリズム用　lightgbm という機械学習モデルで2値分類実行する関数
+    def lightgbm_binary_classification_bee(self,bee1,bee2):
+        import lightgbm as lgb   
+        #light GBM関数 2値　分類用
+        from sklearn import metrics
+
+        # データセットを生成する
+        lgb_train = lgb.Dataset(X_train, y_train)
+        lgb_eval = lgb.Dataset(X_valid, y_valid, reference=lgb_train)
+
+        # LightGBM のハイパーパラメータ
+        lgbm_params = {
+            # 二値分類問題
+            'objective': 'binary',
+            # AUC の最大化を目指す
+            'metric': 'auc',
+            # Fatal の場合出力
+            'verbosity': -1,
+            'max_bin': bee1,
+            'num_leaves' :bee2,
+            }
+
+        # 上記のパラメータでモデルを学習する
+        model = lgb.train(lgbm_params, lgb_train, valid_sets=lgb_eval,
+                          verbose_eval=50,  # 50イテレーション毎に学習結果出力
+                          num_boost_round=1000,  # 最大イテレーション回数指定
+                          early_stopping_rounds=200
+                         )
+
+        # 保存
+        model.save_model('model.txt')
+
+        # テストデータを予測する
+        y_pred = model.predict(X_test, num_iteration=model.best_iteration)
+        
+        # AUC (Area Under the Curve) を計算する
+        fpr, tpr, thresholds = metrics.roc_curve(y_test, y_pred)
+        auc = metrics.auc(fpr, tpr)
+        print("auc",auc)
+        # ROC曲線をプロット
+        plt.plot(fpr, tpr, label='ROC curve (area = %.2f)'%auc)
+        plt.legend()
+        plt.title('ROC curve')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.grid(True)
+                #いったん図を消去
+        plt.clf()
+        return auc
