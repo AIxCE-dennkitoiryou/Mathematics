@@ -1,4 +1,5 @@
 #pandasの中のcolumns（target）をn_day分ずらす変数　これによってn_day先を予測することができるfor文で回すことで調節が可能
+#ただしこのファイルは日付が重ならない場合にのみ利用可能　上と下を削るだけのため
 #variable that shifts columns (target) in pandas by n_days This allows us to predict n_days ahead, and can be adjusted by turning it with a for statement.
 def future_prediction_day(dfdata,culum_u,n_day):
 
