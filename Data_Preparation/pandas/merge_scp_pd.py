@@ -1,3 +1,7 @@
+def merge_pd(df2,scope_i):
+ df3=df2[df2["scope"].isin([scope_i])]
+ return df3
+
 def merge_scp_pd(scope_df,num1,num2):
     df3 = merge_pd(scope_df,scp[num1]) 
     df4 = merge_pd(scope_df,scp[num2])
