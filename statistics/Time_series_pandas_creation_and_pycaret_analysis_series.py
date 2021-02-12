@@ -115,7 +115,7 @@ pred_unseen
 
 #----------------------
 
-    def make_top10_not_onehot(dt):
+def make_top10_not_onehot(dt):
         print(dt)
         #説明変数入力用ここをうまく少ないソースコードで取得できる方法を考案
         def Create_Description_X(dtt):
