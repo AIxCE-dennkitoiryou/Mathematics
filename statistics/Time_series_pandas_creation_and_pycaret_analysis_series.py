@@ -1,5 +1,10 @@
-#pandasの中のcolumns（target）をn_day分ずらす変数　これによってn_day先を予測することができるfor文で回すことで調節が可能
-#variable that shifts columns (target) in pandas by n_days This allows us to predict n_days ahead, and can be adjusted by turning it with a for statement.
+#入力に想定しているデータはpandas "day"と'count_p' というカラムある　'count_p'が日々のデータ数
+#The data we are expecting as input is pandas "day" and a column called 'count_p' where 'count_p' is the number of daily data.
+
+send22=df_scp_w_u_a.rename(columns={'count_p':"target"})
+send2_p=send22.drop("day", axis=1)# 削除
+df_one_hot_encoded = pd.get_dummies(send2_p)
+send2=df_one_hot_encoded
 def future_prediction_day(dfdata,culum_u,n_day):
 
         def Create_Description_X(dtt):
@@ -38,7 +43,7 @@ def future_prediction_day(dfdata,culum_u,n_day):
         Y_X_future2_o=Y_X_future2
         return Y_X_future2_o
 
-test1 = future_prediction_day(df_one_hot_encoded,"target",1)
+test1 = future_prediction_day(send2,"target",1)
 print(test1)
 test2 = future_prediction_day(send2,"target",2)
 print(test2)
@@ -57,7 +62,7 @@ print(test7)
 
 #予想したい日付後の値を選択　Select the value after the date you want to predict.
 # tes の変数の中で"target"が一番左にあることが前提 Assume that "target" is the leftmost variable in tes.
-tes=test1.drop("index", axis=1)# 削除
+tes=test7.drop(["index"], axis=1)# 削除
 
 #----------------------
 #tes の変数の中で"target"が一番左にあることが前提で回帰のベースライン表示　Display the baseline of the regression assuming that "target" is the leftmost variable in tes.
@@ -95,7 +100,7 @@ def make_Base_line(df,numb):
 	return Calculation
 
 Calculation=make_Base_line(tes,0)
-Calculation
+Calculation.to_csv(r""+u.pass_o()+'Calculation_test7.csv', encoding = 'shift-jis')
 #pycaretの実施
 from pycaret.regression import *
 exp_name = setup(tes, target = 'target',train_size = 0.99,silent=True,fold_strategy='timeseries',data_split_shuffle=False)
@@ -105,6 +110,7 @@ omp= create_model("lightgbm",fold = 5)
 evaluate_model(omp)
 pred_unseen = predict_model(omp)
 pred_unseen
+pred_unseen.to_csv(r""+u.pass_o()+'lightgbm_test7_all_data.csv', encoding = 'shift-jis')
 #----------------------
 omp= create_model("lightgbm",cross_validation=False)
 #evaluate_model(omp)
@@ -112,7 +118,7 @@ tuned_lr = tune_model(omp)
 evaluate_model(tuned_lr)
 pred_unseen = predict_model(tuned_lr)
 pred_unseen
-
+pred_unseen.to_csv(r""+u.pass_o()+'lightgbm_tuned_test7_all_data.csv', encoding = 'shift-jis')
 #----------------------
 
 def make_top10_not_onehot(dt):
@@ -174,9 +180,7 @@ def make_top10_not_onehot(dt):
         top10_endo=pd.DataFrame({"Name":wine_except_quality.columns,
         "Coefficients":clf.coef_}).sort_values(by='Coefficients')
         name_all=top10_endo['Name'].values
-
         print(top10_endo)
-
         name_all=top10_endo['Name'].values
         print("name_all",name_all)
         top1=name_all[-1]
@@ -216,7 +220,6 @@ def make_top10_not_onehot(dt):
         str(top10):top10_v})
         #print(top10_endoscope)
         df_all=top10_endoscope
-
         return df_all  
 df_all=make_top10_not_onehot(tes)
 
@@ -228,10 +231,11 @@ omp= create_model("lightgbm",fold = 5)
 evaluate_model(omp)
 pred_unseen = predict_model(omp)
 pred_unseen
-
+pred_unseen.to_csv(r""+u.pass_o()+'lightgbm_test7_top10_data.csv', encoding = 'shift-jis')
 omp= create_model("lightgbm",cross_validation=False)
 #evaluate_model(omp)
 tuned_lr = tune_model(omp)
 evaluate_model(tuned_lr)
 pred_unseen = predict_model(tuned_lr)
 pred_unseen
+pred_unseen.to_csv(r""+u.pass_o()+'lightgbm_tuned_test7_top10_data.csv', encoding = 'shift-jis')
