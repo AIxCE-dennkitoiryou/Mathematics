@@ -8,7 +8,7 @@
 #Logging (English: logging) means.
 #"Take it, take it, take it - log it.
 #Actual logging ☛ Performed after pycaret
-
+import mlflow
 mlflow.set_tracking_uri('./hoge/mlruns/')
 
 # experimentが存在しなければ作成される。
