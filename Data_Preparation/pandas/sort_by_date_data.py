@@ -22,3 +22,25 @@ dpc_date_p= dpc_y + '-' + dpc_m + '-'+ dpc_d
 #print(dpc_date)
 dpc_date=pd.to_datetime(dpc_date_p)
 print(dpc_date)
+
+
+#指定した期間の連続した日付をだす Display consecutive dates for a specified period.
+
+day1h=dpc_date_p[0]
+print(day1h)
+day1l=dpc_date_p[54]
+print(day1l)
+
+from datetime import datetime
+from datetime import timedelta
+
+start = datetime.strptime(str(day1h), '%Y-%m-%d').date()
+end   = datetime.strptime(str(day1l), '%Y-%m-%d').date()
+
+def daterange(_start, _end):
+    for n in range((_end - _start).days):
+        yield _start + timedelta(n)
+
+
+for i in daterange(start, end):
+    print (i)
